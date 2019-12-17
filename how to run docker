@@ -1,0 +1,96 @@
+#docker build
+sudo docker build --no-cache -t openvslam-desktop -f Dockerfile.desktop . --build-arg NUM_THREADS=6
+
+
+
+#run openvslam inside docker 
+./run_euroc_slam -v /home/testRound/orb_vocab/orb_vocab.dbow2 -d /home/testRound/mymav0  -c /home/testRound/chiba.yaml --eval-log
+
+./run_euroc_slam -v /home/testRound/orb_vocab/orb_vocab.dbow2 -d /home/16gopro/mav0  -c /home/16gopro/chibaGopro.yaml --eval-log
+
+./run_euroc_slam -v /home/testRound/orb_vocab/orb_vocab.dbow2 -d /home/13gopro/mav0  -c /home/13gopro/chibaGopro.yaml --eval-log
+
+
+
+sudo docker run -it --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix/:/tmp/.X11-unix:ro -v /media/runqiu/HDD1/20191114chiba:/home  openvslam-desktop
+
+
+
+# in desktop PC with nvidia GPU
+
+xhost +local:
+
+sudo docker run -it --rm\
+    -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+    --privileged \
+    -e DISPLAY=$DISPLAY \
+    -v /usr/lib/nvidia-410:/usr/lib/nvidia-410 \
+    -v /usr/lib32/nvidia-410:/usr/lib32/nvidia-410 \
+    --device /dev/dri \
+    -v /media/runqiu/HDD1/20191114chiba:/home \
+    --device=/dev/tty:/dev/tty \
+    openvslam-desktop
+
+export PATH="/usr/lib/nvidia-410/bin":${PATH}
+export LD_LIBRARY_PATH="/usr/lib/nvidia-410:/usr/lib32/nvidia-410":${LD_LIBRARY_PATH}
+
+./run_euroc_slam -v /home/testRound/orb_vocab/orb_vocab.dbow2 -d /home/16gopro/mav0 -c /home/16gopro/chibaGopro.yaml --eval-log
+
+# multiple process in one container
+sudo docker ps# check container ID
+sudo docker exec -it <container_id> bash
+
+
+# build ros package
+cd /openvslam/ros && \
+catkin_make \
+    -DBUILD_WITH_MARCH_NATIVE=ON \
+    -DUSE_PANGOLIN_VIEWER=ON \
+    -DUSE_SOCKET_PUBLISHER=OFF \
+    -DUSE_STACK_TRACE_LOGGER=ON \
+    -DBOW_FRAMEWORK=DBoW2
+# publish images
+rosrun publisher image -i /home/testRound/mymav0/cam0/data
+rosrun publisher image -i /home/testRound/mymav0/cam1/data
+
+rosrun openvslam run_slam \
+    -v /home/testRound/orb_vocab/orb_vocab.dbow2 \
+    -c /home/16gopro/chibaGopro_mono.yaml
+
+
+
+
+# run openvslam in ros
+rosrun image_transport republish     raw in:=/video/image_raw raw out:=/camera/image_raw
+
+rosrun openvslam run_slam     -v /home/testRound/orb_vocab/orb_vocab.dbow2     -c /home/16gopro/chibaGopro_mono.yaml
+
+# offline test
+xhost +local:
+
+sudo docker run -it --rm\
+    -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+    --privileged \
+    -e DISPLAY=$DISPLAY \
+    -v /usr/lib/nvidia-410:/usr/lib/nvidia-410 \
+    -v /usr/lib32/nvidia-410:/usr/lib32/nvidia-410 \
+    --device /dev/dri \
+    -v /media/runqiu/543009EE3009D7BE/Users/runqiu/Desktop/todai-adhzm:/home \
+    openvslam-desktop
+
+export PATH="/usr/lib/nvidia-410/bin":${PATH}
+
+export LD_LIBRARY_PATH="/usr/lib/nvidia-410:/usr/lib32/nvidia-410":${LD_LIBRARY_PATH}
+
+./run_euroc_slam -v /home/orb_vocab/orb_vocab.dbow2 -d /home/tsukuba/3/mav0  -c /home/tsukuba/3/tsukubaGopro.yaml --eval-log
+
+./run_euroc_slam -v /media/runqiu/543009EE3009D7BE/Users/runqiu/Desktop/todai-adhzm/orb_vocab/orb_vocab.dbow2 -d /media/runqiu/543009EE3009D7BE/Users/runqiu/Desktop/todai-adhzm/tsukuba/3/mav0  -c /media/runqiu/543009EE3009D7BE/Users/runqiu/Desktop/todai-adhzm/tsukuba/3/tsukubaGopro.yaml --eval-log
+
+
+evo_traj tum /media/runqiu/543009EE3009D7BE/Users/runqiu/Desktop/todai-adhzm/chiba/hiragawa/16/result/frame_trajectory_short.txt -p --plot_mode=xz
+
+evo_ape tum /media/runqiu/543009EE3009D7BE/Users/runqiu/Desktop/todai-adhzm/chiba/hiragawa/16/result/frame_trajectory.txt /media/runqiu/543009EE3009D7BE/Users/runqiu/Desktop/todai-adhzm/chiba/hiragawa/16/gt/alignedGT.txt -va --plot --plot_mode xz --save_results results/ORB.zip --t_offset=-3379.294
+
+
+./run_euroc_slam -v /media/runqiu/543009EE3009D7BE2/Users/runqiu/Desktop/todai-adhzm/orb_vocab/orb_vocab.dbow2 -d /media/runqiu/543009EE3009D7BE2/Users/runqiu/Desktop/todai-adhzm/chiba/hiragawa/13gopro/mav0 -c /media/runqiu/543009EE3009D7BE2/Users/runqiu/Desktop/todai-adhzm/chiba/hiragawa/chibaGopro.yaml --eval-log
+

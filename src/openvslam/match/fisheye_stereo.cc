@@ -23,7 +23,7 @@ void fisheye_stereo::compute(std::vector<float>& stereo_x_right, std::vector<flo
     // 画像の行ごとに，ORBで抽出した右画像の特徴点indexを格納しておく
 //    std::chrono::system_clock::time_point  start, end;
 //    start = std::chrono::system_clock::now();
-    const auto indices_right_in_row = get_right_keypoint_indices_in_each_row(2.0);
+    const auto indices_right_in_row = get_right_keypoint_indices_in_each_row(20.0);//runqiu: search in x rows, because epipolar line is not precise
 //    end = std::chrono::system_clock::now();
 //    double elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
 //    std::cout << "elapsed:" << elapsed/1000  << "[ms]:" << std::endl;
@@ -101,7 +101,7 @@ void fisheye_stereo::compute(std::vector<float>& stereo_x_right, std::vector<flo
 #endif
         // 計算結果をセット
         // depths, stereo_x_right についてはループごとに別のメモリ領域にアクセスするのでcritical指定は必要ない
-        depths.at(idx_left) = focal_x_baseline_ / best_disp;
+        depths.at(idx_left) = focal_x_baseline_ / best_disp;//runqiu:ask komatsu-san
         stereo_x_right.at(idx_left) = best_x_right;
 #ifdef SUBPIXEL
         // こっちはcritical指定が必要

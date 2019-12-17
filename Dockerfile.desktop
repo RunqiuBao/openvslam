@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:16.04
 ENV DEBIAN_FRONTEND noninteractive
 
 # install dependencies via apt
@@ -106,6 +106,44 @@ RUN set -x && \
   cd /tmp && \
   rm -rf *
 ENV G2O_ROOT=${CMAKE_INSTALL_PREFIX}
+
+# ROS kinetic
+RUN apt-get update && apt-get install -q -y \
+    dirmngr \
+    gnupg2 \
+    lsb-release \
+    && rm -rf /var/lib/apt/lists/*
+# setup keys
+RUN apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+# setup sources.list
+RUN echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list
+# install bootstrap tools
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    python-rosdep \
+    python-rosinstall \
+    python-vcstools \
+    && rm -rf /var/lib/apt/lists/*
+# setup environment
+ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
+# install ros packages
+ENV ROS_DISTRO kinetic
+RUN apt-get update && apt-get install -y \
+        ros-$ROS_DISTRO-ros-core \
+        ros-$ROS_DISTRO-perception \
+        ros-$ROS_DISTRO-navigation \
+    && rm -rf /var/lib/apt/lists/*
+# bootstrap rosdep
+RUN rosdep init \
+       && rosdep update
+# source environment variables
+RUN echo "source /opt/ros/$ROS_DISTRO/setup.bash" >> /etc/bash.bashrc
+# tools for building ROS packages
+RUN apt-get update && apt-get install python-rosinstall --no-install-recommends -y \
+        python-rosinstall-generator \
+        python-wstool \
+        build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
 # OpenCV
 ARG OPENCV_VERSION=4.1.0
@@ -221,6 +259,25 @@ RUN set -x && \
   make -j${NUM_THREADS} && \
   rm -rf CMakeCache.txt CMakeFiles Makefile cmake_install.cmake example src && \
   chmod -R 777 ./*
+
+# catkin, image_transport, cv_bridge
+RUN apt-get update && apt-get install -y \
+        ros-kinetic-catkin \
+        ros-${ROS_DISTRO}-image-transport \
+    && rm -rf /var/lib/apt/lists/*#for reducing image size
+RUN cd /openvslam/ros && \
+  git clone --branch ${ROS_DISTRO} --depth 1 https://github.com/ros-perception/vision_opencv.git && \
+  cp -r vision_opencv/cv_bridge src/ && \
+  rm -rf vision_opencv
+
+# build ros package
+##RUN cd /openvslam/ros && \
+##  catkin_make \
+##    -DBUILD_WITH_MARCH_NATIVE=ON \
+##    -DUSE_PANGOLIN_VIEWER=ON \
+##    -DUSE_SOCKET_PUBLISHER=OFF \
+##    -DUSE_STACK_TRACE_LOGGER=ON \
+##    -DBOW_FRAMEWORK=DBoW2
 
 WORKDIR /openvslam/build/
 ENTRYPOINT ["/bin/bash"]

@@ -35,8 +35,12 @@ euroc_sequence::euroc_sequence(const std::string& seq_dir_path) {
             unsigned long long timestamp;
             ss >> timestamp;
             timestamps_.push_back(timestamp / static_cast<double>(1E9));
-            left_img_file_paths_.push_back(left_img_dir_path + std::to_string(timestamp) + ".png");
-            right_img_file_paths_.push_back(right_img_dir_path + std::to_string(timestamp) + ".png");
+            std::string filename;
+            ss >> filename;
+            left_img_file_paths_.push_back(left_img_dir_path + filename);
+            right_img_file_paths_.push_back(right_img_dir_path + filename);
+            //left_img_file_paths_.push_back(left_img_dir_path + std::to_string(timestamp) + ".png");
+            //right_img_file_paths_.push_back(right_img_dir_path + std::to_string(timestamp) + ".png");
         }
     }
 
