@@ -38,7 +38,7 @@ fisheye::fisheye(const std::string& name, const setup_type_t& setup_type, const 
         eigen_dist_params_right_ << k1_right_, k2_right_, k3_right_, k4_right_;
 
         // Estimate rectification parameter
-        cv::Mat rvec, R,T;
+        cv::Mat rvec;////, R,T;
         cv::Vec3d tnew;
         rvec = (cv::Mat_<double>(3, 1) << rvec_rl.at(0), rvec_rl.at(1), rvec_rl.at(2));
         T = (cv::Mat_<double>(3, 1) << tvec_rl.at(0), tvec_rl.at(1), tvec_rl.at(2));
@@ -116,7 +116,8 @@ image_bounds fisheye::compute_image_bounds() const {
         double pwy = (0.0 - cy_) / fy_;
         double theta_d = sqrt(pwx * pwx + pwy * pwy);
 
-        if (theta_d > M_PI_2) {
+        //if (theta_d > M_PI_2) {
+        if (true) {
             // fov is super wide (four corners are out of view)
 
             // corner coordinates: (x, y) = (col, row)
@@ -152,10 +153,10 @@ image_bounds fisheye::compute_image_bounds() const {
             // fov is normal (four corners are inside of view)
 
             // corner coordinates: (x, y) = (col, row)
-            const std::vector<cv::KeyPoint> corners{cv::KeyPoint(0.0, 0.0, 1.0),      // left top
+            const std::vector<cv::KeyPoint> corners{cv::KeyPoint(0.0, 0.0, 1.0),      // left top, min_x, min_y
                                                     cv::KeyPoint(cols_, 0.0, 1.0),    // right top
                                                     cv::KeyPoint(0.0, rows_, 1.0),    // left bottom
-                                                    cv::KeyPoint(cols_, rows_, 1.0)}; // right bottom
+                                                    cv::KeyPoint(cols_, rows_, 1.0)}; // right bottom, max_x, max_y
 
             std::vector<cv::KeyPoint> undist_corners;
             undistort_keypoints(corners, undist_corners);

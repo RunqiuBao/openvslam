@@ -128,6 +128,7 @@ public:
     Vec4_t eigen_dist_params_right_;
 
     cv::Mat R1_, R2_;
+    cv::Mat R, T;
     void get_stereo_rectify_param(const cv::Mat& R, const cv::Mat& T, cv::Mat &R1, cv::Mat &R2, cv::Vec3d &tnew);
 
 

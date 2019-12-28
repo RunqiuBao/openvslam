@@ -23,7 +23,7 @@ void fisheye_stereo::compute(std::vector<float>& stereo_x_right, std::vector<flo
     // 画像の行ごとに，ORBで抽出した右画像の特徴点indexを格納しておく
 //    std::chrono::system_clock::time_point  start, end;
 //    start = std::chrono::system_clock::now();
-    const auto indices_right_in_row = get_right_keypoint_indices_in_each_row(20.0);//runqiu: search in x rows, because epipolar line is not precise
+    const auto indices_right_in_row = get_right_keypoint_indices_in_each_row(10.0);//runqiu: search in x rows, because epipolar line is not precise
 //    end = std::chrono::system_clock::now();
 //    double elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
 //    std::cout << "elapsed:" << elapsed/1000  << "[ms]:" << std::endl;
@@ -36,9 +36,9 @@ void fisheye_stereo::compute(std::vector<float>& stereo_x_right, std::vector<flo
     std::vector<std::pair<int, int>> correlation_and_idx_left;
     correlation_and_idx_left.reserve(num_keypts_);
 
-#ifdef USE_OPENMP
-#pragma omp parallel for
-#endif
+// #ifdef USE_OPENMP
+// #pragma omp parallel for
+// #endif
     for (unsigned int idx_left = 0; idx_left < num_keypts_; ++idx_left) {
         const auto& keypt_left = undistort_keypts_left_.at(idx_left);
         const auto scale_level_left = keypt_left.octave;

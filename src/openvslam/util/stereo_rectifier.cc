@@ -17,15 +17,29 @@ stereo_rectifier::stereo_rectifier(camera::base* camera, const YAML::Node& yaml_
     assert(camera->setup_type_ == camera::setup_type_t::Stereo);
     // set image size
     const cv::Size img_size(camera->cols_, camera->rows_);
-    // set camera matrices
-    const auto K_l = parse_vector_as_mat(cv::Size(3, 3), yaml_node["StereoRectifier.K_left"].as<std::vector<double>>());
-    const auto K_r = parse_vector_as_mat(cv::Size(3, 3), yaml_node["StereoRectifier.K_right"].as<std::vector<double>>());
+    // set camera matrices  //runqiu: modify rectifier
+    ////const auto K_l = parse_vector_as_mat(cv::Size(3, 3), yaml_node["StereoRectifier.K_left"].as<std::vector<double>>());
+    ////const auto K_r = parse_vector_as_mat(cv::Size(3, 3), yaml_node["StereoRectifier.K_right"].as<std::vector<double>>());
+    std::vector<double> kleft{yaml_node["Camera.fx"].as<double>(), 0, yaml_node["Camera.cx"].as<double>(), 0, yaml_node["Camera.fy"].as<double>(), yaml_node["Camera.cy"].as<double>(), 0, 0, 1};
+    std::vector<double> kright{yaml_node["Camera.fx_right"].as<double>(), 0, yaml_node["Camera.cx_right"].as<double>(), 0, yaml_node["Camera.fy_right"].as<double>(), yaml_node["Camera.cy_right"].as<double>(), 0, 0, 1};
+    const auto K_l = parse_vector_as_mat(cv::Size(3, 3), kleft);
+    const auto K_r = parse_vector_as_mat(cv::Size(3, 3), kright);
     // set rotation matrices
-    const auto R_l = parse_vector_as_mat(cv::Size(3, 3), yaml_node["StereoRectifier.R_left"].as<std::vector<double>>());
-    const auto R_r = parse_vector_as_mat(cv::Size(3, 3), yaml_node["StereoRectifier.R_right"].as<std::vector<double>>());
+    ////const auto R_l = parse_vector_as_mat(cv::Size(3, 3), yaml_node["StereoRectifier.R_left"].as<std::vector<double>>());
+    ////const auto R_r = parse_vector_as_mat(cv::Size(3, 3), yaml_node["StereoRectifier.R_right"].as<std::vector<double>>());
+    std::vector<double> r_vec=yaml_node["Camera.rvec_left_to_right"].as<std::vector<double>>();
+    cv::Mat Rright = cv::Mat::eye(3, 3, CV_32F);
+    cv::Rodrigues(r_vec, Rright);
+    const auto R_l = cv::Mat::eye(3, 3, CV_32F);
+    const auto R_r = Rright;
     // set distortion parameters depending on the camera model
-    const auto D_l_vec = yaml_node["StereoRectifier.D_left"].as<std::vector<double>>();
-    const auto D_r_vec = yaml_node["StereoRectifier.D_right"].as<std::vector<double>>();
+    ////const auto D_l_vec = yaml_node["StereoRectifier.D_left"].as<std::vector<double>>();
+    ////const auto D_r_vec = yaml_node["StereoRectifier.D_right"].as<std::vector<double>>();
+    std::vector<double> Dleft={yaml_node["Camera.k1"].as<double>(), yaml_node["Camera.k2"].as<double>(), yaml_node["Camera.k3"].as<double>(), yaml_node["Camera.k4"].as<double>()};
+    std::vector<double> Dright={yaml_node["Camera.k1_right"].as<double>(), yaml_node["Camera.k2_right"].as<double>(), yaml_node["Camera.k3_right"].as<double>(), yaml_node["Camera.k4_right"].as<double>()};
+    const auto D_l_vec = Dleft;
+    const auto D_r_vec = Dright;
+
     switch (model_type_) {
         case camera::model_type_t::Perspective: {
             const auto D_l = parse_vector_as_mat(cv::Size(1, D_l_vec.size()), D_l_vec);
@@ -69,7 +83,8 @@ cv::Mat stereo_rectifier::parse_vector_as_mat(const cv::Size& shape, const std::
 }
 
 camera::model_type_t stereo_rectifier::load_model_type(const YAML::Node& yaml_node) {
-    const auto model_type_str = yaml_node["StereoRectifier.model"].as<std::string>("perspective");
+    ////const auto model_type_str = yaml_node["StereoRectifier.model"].as<std::string>("perspective");
+    const auto model_type_str = yaml_node["Camera.model"].as<std::string>("fisheye");;//runqiu: temporary
     if (model_type_str == "perspective") {
         return camera::model_type_t::Perspective;
     }

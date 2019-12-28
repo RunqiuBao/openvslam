@@ -84,7 +84,7 @@ export LD_LIBRARY_PATH="/usr/lib/nvidia-410:/usr/lib32/nvidia-410":${LD_LIBRARY_
 
 ./run_euroc_slam -v /home/orb_vocab/orb_vocab.dbow2 -d /home/tsukuba/3/mav0  -c /home/tsukuba/3/tsukubaGopro.yaml --eval-log
 
-./run_euroc_slam -v /media/runqiu/543009EE3009D7BE/Users/runqiu/Desktop/todai-adhzm/orb_vocab/orb_vocab.dbow2 -d /media/runqiu/543009EE3009D7BE/Users/runqiu/Desktop/todai-adhzm/tsukuba/3/mav0  -c /media/runqiu/543009EE3009D7BE/Users/runqiu/Desktop/todai-adhzm/tsukuba/3/tsukubaGopro.yaml --eval-log
+./run_euroc_slam -v /media/runqiu/543009EE3009D7BE2/Users/runqiu/Desktop/todai-adhzm/orb_vocab/orb_vocab.dbow2 -d /media/runqiu/543009EE3009D7BE2/Users/runqiu/Desktop/todai-adhzm/tsukuba/3/mav0  -c /media/runqiu/543009EE3009D7BE2/Users/runqiu/Desktop/todai-adhzm/tsukuba/3/tsukubaGopro.yaml --eval-log
 
 
 evo_traj tum /media/runqiu/543009EE3009D7BE/Users/runqiu/Desktop/todai-adhzm/chiba/hiragawa/16/result/frame_trajectory_short.txt -p --plot_mode=xz
@@ -92,5 +92,5 @@ evo_traj tum /media/runqiu/543009EE3009D7BE/Users/runqiu/Desktop/todai-adhzm/chi
 evo_ape tum /media/runqiu/543009EE3009D7BE/Users/runqiu/Desktop/todai-adhzm/chiba/hiragawa/16/result/frame_trajectory.txt /media/runqiu/543009EE3009D7BE/Users/runqiu/Desktop/todai-adhzm/chiba/hiragawa/16/gt/alignedGT.txt -va --plot --plot_mode xz --save_results results/ORB.zip --t_offset=-3379.294
 
 
-./run_euroc_slam -v /media/runqiu/543009EE3009D7BE2/Users/runqiu/Desktop/todai-adhzm/orb_vocab/orb_vocab.dbow2 -d /media/runqiu/543009EE3009D7BE2/Users/runqiu/Desktop/todai-adhzm/chiba/hiragawa/13gopro/mav0 -c /media/runqiu/543009EE3009D7BE2/Users/runqiu/Desktop/todai-adhzm/chiba/hiragawa/chibaGopro.yaml --eval-log
+./run_euroc_slam -v /media/runqiu/543009EE3009D7BE2/Users/runqiu/Desktop/todai-adhzm/orb_vocab/orb_vocab.dbow2 -d /media/runqiu/543009EE3009D7BE2/Users/runqiu/Desktop/todai-adhzm/chiba/hiragawa/13gopro/mav0 -c /media/runqiu/543009EE3009D7BE2/Users/runqiu/Desktop/todai-adhzm/chiba/hiragawa/13gopro/hiragawaGopro.yaml --eval-log
 
