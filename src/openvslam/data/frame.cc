@@ -35,7 +35,7 @@ frame::frame(const cv::Mat& img_gray, const double timestamp,
     }
 
     // Undistort keypoints
-    camera_->undistort_keypoints(keypts_, undist_keypts_);
+    camera_->undistort_keypoints(keypts_, undist_keypts_);//runqiu: undistort fisheye keypoints to pinhole keypoints
 
     // Ignore stereo parameters
     stereo_x_right_ = std::vector<float>(num_keypts_, -1);

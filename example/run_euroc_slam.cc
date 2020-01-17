@@ -150,12 +150,7 @@ void stereo_tracking(const std::shared_ptr<openvslam::config>& cfg,
 
     //
     std::unique_ptr<openvslam::util::stereo_rectifier> rectifier;
-    if(cfg->camera_->model_type_ == openvslam::camera::model_type_t::Perspective){
-        rectifier = std::make_unique<openvslam::util::stereo_rectifier>(cfg);
-    }
-    ////else if(cfg->camera_->model_type_ == openvslam::camera::model_type_t::Fisheye){
-    ////    rectifier = std::make_unique<openvslam::util::stereo_rectifier>(cfg);
-    ////}
+
     // build a SLAM system
     openvslam::system SLAM(cfg, vocab_file_path);
     // startup the SLAM process
