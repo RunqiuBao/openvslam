@@ -22,6 +22,10 @@
 #include <spdlog/spdlog.h>
 #include <popl.hpp>
 
+#include <message_filters/subscriber.h>
+#include <message_filters/time_synchronizer.h>
+#include <sensor_msgs/Image.h>
+
 #ifdef USE_STACK_TRACE_LOGGER
 #include <glog/logging.h>
 #endif
@@ -29,6 +33,118 @@
 #ifdef USE_GOOGLE_PERFTOOLS
 #include <gperftools/profiler.h>
 #endif
+
+void callback(const ImageConstPtr& leftimage, const ImageConstPtr& rightimage, std::chrono::time_point tp_0, std::vector<double> &track_times)
+{
+    // Solve all of perception here...
+    const auto tp_1 = std::chrono::steady_clock::now();
+    const auto timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(tp_1 - tp_0).count();
+
+    // input the current frame and estimate the camera pose
+    SLAM.feed_stereo_frame(cv_bridge::toCvShare(leftimage, "bgr8")->image, cv_bridge::toCvShare(rightimage, "bgr8")->image, timestamp);
+
+    const auto tp_2 = std::chrono::steady_clock::now();
+
+    const auto track_time = std::chrono::duration_cast<std::chrono::duration<double>>(tp_2 - tp_1).count();
+    track_times.push_back(track_time);
+}
+
+void stereo_tracking(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path,
+                   const std::string& mask_img_path, const bool eval_log, const std::string& map_db_path){
+    // load the mask image
+    const cv::Mat mask = mask_img_path.empty() ? cv::Mat{} : cv::imread(mask_img_path, cv::IMREAD_GRAYSCALE);
+
+    // build a SLAM system
+    openvslam::system SLAM(cfg, vocab_file_path);
+    // startup the SLAM process
+    SLAM.startup();
+
+    // create a viewer object
+    // and pass the frame_publisher and the map_publisher
+#ifdef USE_PANGOLIN_VIEWER
+    pangolin_viewer::viewer viewer(cfg, &SLAM, SLAM.get_frame_publisher(), SLAM.get_map_publisher());
+#elif USE_SOCKET_PUBLISHER
+    socket_publisher::publisher publisher(cfg, &SLAM, SLAM.get_frame_publisher(), SLAM.get_map_publisher());
+#endif
+
+    std::vector<double> track_times;
+    const auto tp_0 = std::chrono::steady_clock::now();
+
+    // initialize this node
+    const ros::NodeHandle nh;
+    
+    message_filters::Subscriber<Image> leftimage_sub(nh, "imagel", 1);
+    message_filters::Subscriber<Image> rightimage_sub(nh, "imager", 1);
+    TimeSynchronizer<Image, CameraInfo> sync(leftimage_sub, rightimage_sub, 10);
+    sync.registerCallback(boost::bind(&callback, _1, _2, tp_0, track_times));
+
+    // run the viewer in another thread
+#ifdef USE_PANGOLIN_VIEWER
+    std::thread thread([&]() {
+        viewer.run();
+        if (SLAM.terminate_is_requested()) {
+            // wait until the loop BA is finished
+            while (SLAM.loop_BA_is_running()) {
+                std::this_thread::sleep_for(std::chrono::microseconds(5000));
+            }
+            ros::shutdown();
+        }
+    });
+#elif USE_SOCKET_PUBLISHER
+    std::thread thread([&]() {
+        publisher.run();
+        if (SLAM.terminate_is_requested()) {
+            // wait until the loop BA is finished
+            while (SLAM.loop_BA_is_running()) {
+                std::this_thread::sleep_for(std::chrono::microseconds(5000));
+            }
+            ros::shutdown();
+        }
+    });
+#endif
+
+    ros::spin();
+
+    // automatically close the viewer
+#ifdef USE_PANGOLIN_VIEWER
+    viewer.request_terminate();
+    thread.join();
+#elif USE_SOCKET_PUBLISHER
+    publisher.request_terminate();
+    thread.join();
+#endif
+
+    // shutdown the SLAM process
+    SLAM.shutdown();
+
+    if (eval_log) {
+        // output the trajectories for evaluation
+        SLAM.save_frame_trajectory("frame_trajectory.txt", "TUM");
+        SLAM.save_keyframe_trajectory("keyframe_trajectory.txt", "TUM");
+        // output the tracking times for evaluation
+        std::ofstream ofs("track_times.txt", std::ios::out);
+        if (ofs.is_open()) {
+            for (const auto track_time : track_times) {
+                ofs << track_time << std::endl;
+            }
+            ofs.close();
+        }
+    }
+
+    if (!map_db_path.empty()) {
+        // output the map database
+        SLAM.save_map_database(map_db_path);
+    }
+
+    if (track_times.size()) {
+        std::sort(track_times.begin(), track_times.end());
+        const auto total_track_time = std::accumulate(track_times.begin(), track_times.end(), 0.0);
+        std::cout << "median tracking time: " << track_times.at(track_times.size() / 2) << "[s]" << std::endl;
+        std::cout << "mean tracking time: " << total_track_time / track_times.size() << "[s]" << std::endl;
+    }
+
+
+}
 
 void mono_tracking(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path,
                    const std::string& mask_img_path, const bool eval_log, const std::string& map_db_path) {
