@@ -6,6 +6,7 @@ set_target_properties(video_publisher PROPERTIES OUTPUT_NAME video PREFIX "")
 
 add_executable(image_publisher image_publisher.cc ${OpenVSLAM_ROOT}/example/util/image_util.cc)
 target_include_directories(image_publisher PRIVATE ${OpenVSLAM_ROOT}/example)
+target_link_libraries(image_publisher Spinnaker)
 list(APPEND EXECUTABLE_TARGETS image_publisher)
 set_target_properties(image_publisher PROPERTIES OUTPUT_NAME image PREFIX "")
 

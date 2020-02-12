@@ -1,0 +1,5 @@
+<launch>
+
+<node pkg="publisher" type="image" name="image" output="screen" />
+
+</launch>

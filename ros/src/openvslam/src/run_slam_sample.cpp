@@ -25,7 +25,6 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <sensor_msgs/Image.h>
-#include <message_filters/sync_policies/approximate_time.h>
 
 #ifdef USE_STACK_TRACE_LOGGER
 #include <glog/logging.h>
@@ -35,35 +34,20 @@
 #include <gperftools/profiler.h>
 #endif
 
-class Listener
+void callback(const sensor_msgs::ImageConstPtr& leftimage, const sensor_msgs::ImageConstPtr& rightimage, const auto tp_0, std::vector<double> &track_times, openvslam::system SLAM)
 {
-public:
-    std::chrono::time_point<std::chrono::steady_clock> tp_0;
-    std::vector<double> *track_times;
-    openvslam::system *SLAM;
-    Listener(std::chrono::time_point<std::chrono::steady_clock> tp_0, std::vector<double> *track_times, openvslam::system *SLAM)
-    {
-        this->tp_0=tp_0;
-        this->track_times=track_times;
-        this->SLAM=SLAM;
+    // Solve all of perception here...
+    const auto tp_1 = std::chrono::steady_clock::now();
+    const auto timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(tp_1 - tp_0).count();
 
-    }
-    void SLAMcallback(const sensor_msgs::ImageConstPtr& leftimage, const sensor_msgs::ImageConstPtr& rightimage)
-    {
-      // Solve all of perception here...
-      const auto tp_1 = std::chrono::steady_clock::now();
-      const auto timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(tp_1 - tp_0).count();
+    // input the current frame and estimate the camera pose
+    SLAM.feed_stereo_frame(cv_bridge::toCvShare(leftimage, "bgr8")->image, cv_bridge::toCvShare(rightimage, "bgr8")->image, timestamp);
 
-      // input the current frame and estimate the camera pose
-      (*SLAM).feed_stereo_frame(cv_bridge::toCvShare(leftimage, "bgr8")->image, cv_bridge::toCvShare(rightimage, "bgr8")->image, timestamp);
-      std::cout<<"timestamp: "<<std::to_string(timestamp)<<std::endl;
+    const auto tp_2 = std::chrono::steady_clock::now();
 
-      const auto tp_2 = std::chrono::steady_clock::now();
-
-      const auto track_time = std::chrono::duration_cast<std::chrono::duration<double>>(tp_2 - tp_1).count();
-      (*track_times).push_back(track_time);
-    }
-};
+    const auto track_time = std::chrono::duration_cast<std::chrono::duration<double>>(tp_2 - tp_1).count();
+    track_times.push_back(track_time);
+}
 
 void stereo_tracking(const std::shared_ptr<openvslam::config>& cfg, const std::string& vocab_file_path,
                    const std::string& mask_img_path, const bool eval_log, const std::string& map_db_path){
@@ -87,15 +71,12 @@ void stereo_tracking(const std::shared_ptr<openvslam::config>& cfg, const std::s
     const auto tp_0 = std::chrono::steady_clock::now();
 
     // initialize this node
-    ros::NodeHandle nh;
-    Listener listener(tp_0, &track_times, &SLAM);
-
+    const ros::NodeHandle nh;
+    
     message_filters::Subscriber<sensor_msgs::Image> leftimage_sub(nh, "imagel", 1);
     message_filters::Subscriber<sensor_msgs::Image> rightimage_sub(nh, "imager", 1);
-    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
-    message_filters::Synchronizer<MySyncPolicy> sync(MySyncPolicy(10), leftimage_sub, rightimage_sub);
-    //message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image, std::chrono::time_point<std::chrono::steady_clock>, std::vector<double>, openvslam::system> sync(leftimage_sub, rightimage_sub, tp_0, track_times, SLAM, 10);
-    sync.registerCallback(boost::bind(&Listener::SLAMcallback, &listener, _1, _2));
+    message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image> sync(leftimage_sub, rightimage_sub, 10, tp_0, track_times, SLAM);
+    sync.registerCallback(boost::bind(&callback, _1, _2));
 
     // run the viewer in another thread
 #ifdef USE_PANGOLIN_VIEWER
@@ -336,7 +317,7 @@ int main(int argc, char* argv[]) {
         mono_tracking(cfg, vocab_file_path->value(), mask_img_path->value(), eval_log->is_set(), map_db_path->value());
     }
     else {
-        stereo_tracking(cfg, vocab_file_path->value(), mask_img_path->value(), eval_log->is_set(), map_db_path->value());
+        throw std::runtime_error("Invalid setup type: " + cfg->camera_->get_setup_type_string());
     }
 
 #ifdef USE_GOOGLE_PERFTOOLS

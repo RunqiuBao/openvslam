@@ -19,8 +19,6 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
-#include <thread>
-
 
 using namespace Spinnaker;
 using namespace Spinnaker::GenApi;
@@ -33,15 +31,16 @@ struct PubrCompo{
 };
 
 // This function acquires and saves 10 images from a camera.
-void AcquiAndPubImages(PubrCompo arg)
+void* AcquiAndPubImages(void* arg)
 {
-    CameraPtr pCam = *(arg.pCam);
-    image_transport::Publisher publisher=*(arg.publisher);
+    CameraPtr pCam = *(((PubrCompo*)arg)->pCam);
+    image_transport::Publisher publisher=*(((PubrCompo*)arg)->publisher);
 
     try
     {
         // Retrieve TL device nodemap
         INodeMap& nodeMapTLDevice = pCam->GetTLDeviceNodeMap();
+        ROS_INFO("pCam->GetTLDeviceNodeMa");
 
         // Retrieve device serial number for filename
         CStringPtr ptrStringSerial = pCam->GetTLDeviceNodeMap().GetNode("DeviceSerialNumber");
@@ -96,7 +95,7 @@ void AcquiAndPubImages(PubrCompo arg)
             cout << "Unable to set acquisition mode to continuous (node retrieval; camera " << serialNumber
                  << "). Aborting..." << endl
                  << endl;
-            return;
+            return (void*)0;
 
         }
 
@@ -106,7 +105,7 @@ void AcquiAndPubImages(PubrCompo arg)
             cout << "Unable to set acquisition mode to Continuous (entry 'Continuous' retrieval " << serialNumber
                  << "). Aborting..." << endl
                  << endl;
-            return;
+            return (void*)0;
 
         }
 
@@ -135,8 +134,11 @@ void AcquiAndPubImages(PubrCompo arg)
         {
             try
             {
+                ROS_INFO("%s try pCam->GetNextImage();", serialNumber);
                 // Retrieve next received image and ensure image completion
                 ImagePtr pResultImage = pCam->GetNextImage();
+                ROS_DEBUG_STREAM("done pCam->GetNextImage();"<<serialNumber);
+
 
                 if (pResultImage->IsIncomplete())
                 {
@@ -158,6 +160,7 @@ void AcquiAndPubImages(PubrCompo arg)
                     msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", img_).toImageMsg();
                     (*msg).header.stamp = ros::Time::now();
                     publisher.publish(msg);
+                    ROS_DEBUG_STREAM("done publisher.publish(msg);"<<serialNumber);
                 }
 
                 // Release image
@@ -178,13 +181,13 @@ void AcquiAndPubImages(PubrCompo arg)
         // Deinitialize camera
         pCam->DeInit();
 
-        return;
+        return (void*)1;
 
     }
     catch (Spinnaker::Exception& e)
     {
         cout << "Error: " << e.what() << endl;
-        return;
+        return (void*)0;
     }
 }
 
@@ -226,8 +229,8 @@ int main(int argc, char* argv[]) {
     image_transport::ImageTransport itl(nh);
     image_transport::ImageTransport itr(nh);
     image_transport::Publisher *publisher=new image_transport::Publisher[2];
-    publisher[1]= itl.advertise("imagel", 1);
-    publisher[0] = itr.advertise("imager", 1);
+    publisher[0]= itl.advertise("imagel", 1);
+    publisher[1] = itr.advertise("imager", 1);
 
     //ros::Rate pub_rate(5);
 
@@ -242,7 +245,6 @@ int main(int argc, char* argv[]) {
     CameraPtr* pCamList = new CameraPtr[camListSize];
     pthread_t* grabThreads = new pthread_t[camListSize];
     PubrCompo* pubrcom=new PubrCompo[camListSize];
-    std::thread myThreads[camListSize];
 
     try
     {
@@ -251,16 +253,30 @@ int main(int argc, char* argv[]) {
             // Select camera
             pCamList[i] = camList.GetByIndex(i);
 
-            // Start thread
+            // Start grab thread
+
             pubrcom[i].pCam=&pCamList[i];
             pubrcom[i].publisher=&publisher[i];
-            myThreads[i] = std::thread(AcquiAndPubImages, pubrcom[i]);
+            int err = pthread_create(&(grabThreads[i]), nullptr, &AcquiAndPubImages, &pubrcom[i]);
             cout << "Started one thread" << endl;
+            assert(err == 0);
         }
         for (unsigned int i = 0; i < camListSize; i++)
         {
             // Wait for all threads to finish
-            myThreads[i].join();
+            void* exitcode;
+            int rc = pthread_join(grabThreads[i], &exitcode);
+            if (rc != 0)
+            {
+                cout << "Handle error from pthread_join returned for camera at index " << i << endl;
+            }
+            else if ((int)(intptr_t)exitcode == 0) // check thread return code for each camera
+            {
+                cout << "Grab thread for camera at index " << i
+                     << " exited with errors."
+                        "Please check onscreen print outs for error details"
+                     << endl;
+            }
         }
 
         // Clear CameraPtr array and close all handles
