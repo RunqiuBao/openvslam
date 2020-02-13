@@ -66,8 +66,8 @@ void AcquiAndPubImages(PubrCompo arg)
         pCam->PixelFormat.SetValue(PixelFormat_BayerGB8);//runqiu: get raw images
 
         std::cout << "Set hardwareTrigger" << std::endl;
-        pCam->TriggerMode.SetValue(TriggerMode_On);
-        pCam->TriggerSource.SetValue(TriggerSource_Line0);
+        //pCam->TriggerMode.SetValue(TriggerMode_On);
+        //pCam->TriggerSource.SetValue(TriggerSource_Line0);
         // Limit exposure time
         //   pCam->ExposureAuto.SetValue(ExposureAuto_Continuous);
         //   pCam->AutoExposureExposureTimeUpperLimit.SetValue(20000);
@@ -226,8 +226,8 @@ int main(int argc, char* argv[]) {
     image_transport::ImageTransport itl(nh);
     image_transport::ImageTransport itr(nh);
     image_transport::Publisher *publisher=new image_transport::Publisher[2];
-    publisher[1]= itl.advertise("imagel", 1);
-    publisher[0] = itr.advertise("imager", 1);
+    publisher[0]= itl.advertise("imagel", 1);
+    publisher[1] = itr.advertise("imager", 1);
 
     //ros::Rate pub_rate(5);
 

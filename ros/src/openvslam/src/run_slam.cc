@@ -55,8 +55,14 @@ public:
       const auto timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(tp_1 - tp_0).count();
 
       // input the current frame and estimate the camera pose
+      //Eigen::Matrix4d campose;
       (*SLAM).feed_stereo_frame(cv_bridge::toCvShare(leftimage, "bgr8")->image, cv_bridge::toCvShare(rightimage, "bgr8")->image, timestamp);
       std::cout<<"timestamp: "<<std::to_string(timestamp)<<std::endl;
+      //double x=campose(0,3);
+      //double y=campose(1,3);
+      //double z=campose(2,3);
+      //std::string line="location: "+std::to_string(x)+", "+std::to_string(y)+", "+std::to_string(z);
+      //std::cout<<line<<std::endl;
 
       const auto tp_2 = std::chrono::steady_clock::now();
 
@@ -191,7 +197,7 @@ void mono_tracking(const std::shared_ptr<openvslam::config>& cfg, const std::str
     image_transport::ImageTransport it(nh);
 
     // run the SLAM as subscriber
-    image_transport::Subscriber sub = it.subscribe("camera/image_raw", 1, [&](const sensor_msgs::ImageConstPtr& msg) {
+    image_transport::Subscriber sub = it.subscribe("imagel", 1, [&](const sensor_msgs::ImageConstPtr& msg) {
         const auto tp_1 = std::chrono::steady_clock::now();
         const auto timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(tp_1 - tp_0).count();
 

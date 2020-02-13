@@ -1,3 +1,4 @@
+sudo sh -c 'echo 8000 > /sys/module/usbcore/parameters/usbfs_memory_mb'
 source devel/setup.bash
 
 rosrun publisher image
