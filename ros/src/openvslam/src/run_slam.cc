@@ -25,7 +25,9 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/image_encodings.h>
 #include <message_filters/sync_policies/approximate_time.h>
+#include <openvslam/Kenkipos.h>
 
 #ifdef USE_STACK_TRACE_LOGGER
 #include <glog/logging.h>
@@ -41,33 +43,67 @@ public:
     std::chrono::time_point<std::chrono::steady_clock> tp_0;
     std::vector<double> *track_times;
     openvslam::system *SLAM;
-    Listener(std::chrono::time_point<std::chrono::steady_clock> tp_0, std::vector<double> *track_times, openvslam::system *SLAM)
+    ros::Publisher *kenkipos_publisher;
+    Listener(std::chrono::time_point<std::chrono::steady_clock> tp_0, std::vector<double> *track_times, openvslam::system *SLAM, ros::Publisher *kenkipos_publisher)
     {
         this->tp_0=tp_0;
         this->track_times=track_times;
         this->SLAM=SLAM;
+        this->kenkipos_publisher=kenkipos_publisher;
 
     }
-    void SLAMcallback(const sensor_msgs::ImageConstPtr& leftimage, const sensor_msgs::ImageConstPtr& rightimage)
+    void SLAMcallback(const sensor_msgs::ImageConstPtr& leftimage, const sensor_msgs::ImageConstPtr& rightimage, const sensor_msgs::ImageConstPtr& maskimage)
     {
       // Solve all of perception here...
       const auto tp_1 = std::chrono::steady_clock::now();
       const auto timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(tp_1 - tp_0).count();
+      const auto leftimagetimestamp = leftimage->header.stamp;
 
       // input the current frame and estimate the camera pose
       //Eigen::Matrix4d campose;
-      (*SLAM).feed_stereo_frame(cv_bridge::toCvShare(leftimage, "bgr8")->image, cv_bridge::toCvShare(rightimage, "bgr8")->image, timestamp);
+      cv::Mat imgl;
+      cv::Mat imgr;
+      cv::Mat imgmask;
+      try{
+        imgl = cv_bridge::toCvShare(leftimage, "rgb8")->image;
+        imgr = cv_bridge::toCvShare(rightimage, "rgb8")->image;
+        imgmask = cv_bridge::toCvShare(maskimage, "mono8")->image;
+      }
+      catch(cv_bridge::Exception& e)
+      {
+        ROS_ERROR("cv_bridge exception: %s", e.what());
+      }
+      const auto campose = (*SLAM).feed_stereo_frame(imgl, imgr, timestamp, imgmask);
       std::cout<<"timestamp: "<<std::to_string(timestamp)<<std::endl;
-      //double x=campose(0,3);
-      //double y=campose(1,3);
-      //double z=campose(2,3);
-      //std::string line="location: "+std::to_string(x)+", "+std::to_string(y)+", "+std::to_string(z);
+      double x=campose(0,3);
+      double y=campose(1,3);
+      double z=campose(2,3);
+      std::string line="location: "+std::to_string(x)+", "+std::to_string(y)+", "+std::to_string(z);
       //std::cout<<line<<std::endl;
 
       const auto tp_2 = std::chrono::steady_clock::now();
 
       const auto track_time = std::chrono::duration_cast<std::chrono::duration<double>>(tp_2 - tp_1).count();
       (*track_times).push_back(track_time);
+
+      // coordinates transform
+      cv::Mat Twc0 = (cv::Mat_<double>(4,4)<<
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1);
+      cv::Mat Pc_homo = (cv::Mat_<double>(4,1)<<x,y,z,1);
+      cv::Mat Pw_homo = Twc0.mul(Pc_homo);
+      std::cout<<std::to_string(Pw_homo.rows)<<","<<std::to_string(Pw_homo.cols)<<std::endl;
+      x = Pw_homo.at<double>(0,0);
+      y = Pw_homo.at<double>(1,0);
+      z = Pw_homo.at<double>(2,0);
+      openvslam::Kenkipos msg;
+      msg.stamp = leftimagetimestamp;
+      msg.x = x;
+      msg.y = y;
+      msg.z = z;
+      (*kenkipos_publisher).publish(msg);
     }
 };
 
@@ -94,14 +130,19 @@ void stereo_tracking(const std::shared_ptr<openvslam::config>& cfg, const std::s
 
     // initialize this node
     ros::NodeHandle nh;
-    Listener listener(tp_0, &track_times, &SLAM);
+    // publisher for kenkipos broadcast
+    ros::Publisher kenkipos_publisher = nh.advertise<openvslam::Kenkipos>("Kisekipos", 1000);
 
-    message_filters::Subscriber<sensor_msgs::Image> leftimage_sub(nh, "imagel", 1);
-    message_filters::Subscriber<sensor_msgs::Image> rightimage_sub(nh, "imager", 1);
-    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
-    message_filters::Synchronizer<MySyncPolicy> sync(MySyncPolicy(10), leftimage_sub, rightimage_sub);
+    Listener listener(tp_0, &track_times, &SLAM, &kenkipos_publisher);
+
+    message_filters::Subscriber<sensor_msgs::Image> leftimage_sub(nh, "imagel_seman", 1);
+    message_filters::Subscriber<sensor_msgs::Image> rightimage_sub(nh, "imager_seman", 1);
+    message_filters::Subscriber<sensor_msgs::Image> maskimage_sub(nh, "maskimage", 1);
+    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
+    message_filters::Synchronizer<MySyncPolicy> sync(MySyncPolicy(10), leftimage_sub, rightimage_sub, maskimage_sub);
     //message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image, std::chrono::time_point<std::chrono::steady_clock>, std::vector<double>, openvslam::system> sync(leftimage_sub, rightimage_sub, tp_0, track_times, SLAM, 10);
-    sync.registerCallback(boost::bind(&Listener::SLAMcallback, &listener, _1, _2));
+    std::cout << "callback registered!" << std::endl;
+    sync.registerCallback(boost::bind(&Listener::SLAMcallback, &listener, _1, _2, _3));//_1, _2, _3 represents the three synchronized subscriber objects.
 
     // run the viewer in another thread
 #ifdef USE_PANGOLIN_VIEWER

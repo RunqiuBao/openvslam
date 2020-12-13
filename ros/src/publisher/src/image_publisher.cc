@@ -66,13 +66,16 @@ void AcquiAndPubImages(PubrCompo arg)
         pCam->PixelFormat.SetValue(PixelFormat_BayerGB8);//runqiu: get raw images
 
         std::cout << "Set hardwareTrigger" << std::endl;
-        //pCam->TriggerMode.SetValue(TriggerMode_On);
-        //pCam->TriggerSource.SetValue(TriggerSource_Line0);
+        pCam->TriggerMode.SetValue(TriggerMode_On);
+        pCam->TriggerSource.SetValue(TriggerSource_Line0);
+
+        //continuous exposure time
+        pCam->ExposureAuto.SetValue(ExposureAuto_Continuous);
+
         // Limit exposure time
         //   pCam->ExposureAuto.SetValue(ExposureAuto_Continuous);
         //   pCam->AutoExposureExposureTimeUpperLimit.SetValue(20000);
         // Fix exposure time
-        pCam->ExposureAuto.SetValue(ExposureAuto_Continuous);
         //pCam->ExposureAuto.SetValue(ExposureAuto_Off);
         //pCam->ExposureTime.SetValue(expoTime);
 
@@ -115,7 +118,7 @@ void AcquiAndPubImages(PubrCompo arg)
         ptrAcquisitionMode->SetIntValue(acquisitionModeContinuous);
 
         cout << "[" << serialNumber << "] "
-             << "Acquisition mode set to SingleFrame..." << endl;
+             << "Acquisition mode set to continusFrame..." << endl;
 
         // Begin acquiring images
         pCam->BeginAcquisition();
@@ -240,7 +243,6 @@ int main(int argc, char* argv[]) {
 
     // Create an array of handles
     CameraPtr* pCamList = new CameraPtr[camListSize];
-    pthread_t* grabThreads = new pthread_t[camListSize];
     PubrCompo* pubrcom=new PubrCompo[camListSize];
     std::thread myThreads[camListSize];
 
@@ -263,7 +265,7 @@ int main(int argc, char* argv[]) {
             myThreads[i].join();
         }
 
-        // Clear CameraPtr array and close all handles
+        // Clear CameraPtr array
         for (unsigned int i = 0; i < camListSize; i++)
         {
             pCamList[i] = 0;
@@ -272,8 +274,6 @@ int main(int argc, char* argv[]) {
         // Delete array pointer
         delete[] pCamList;
 
-        // Delete array pointer
-        delete[] grabThreads;
     }
     catch (Spinnaker::Exception& e)
     {
