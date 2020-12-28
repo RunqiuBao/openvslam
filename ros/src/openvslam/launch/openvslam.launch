@@ -1,0 +1,5 @@
+<launch>
+
+<node pkg="openvslam" type="run_slam" name="run_slam" output="screen" args="-v /home/jiang/Desktop/bao/orb_vocab/orb_vocab.dbow2 -c /home/jiang/Desktop/bao/config.yaml"/>
+
+</launch>

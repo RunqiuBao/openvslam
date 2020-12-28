@@ -4,6 +4,9 @@ lib/
 .idea/
 cmake-build-debug/
 cmake-build-release/
+ros/src/nmeagen/
+ros/src/nmeagen_config/
+
 */.python-version
 *.user
 
