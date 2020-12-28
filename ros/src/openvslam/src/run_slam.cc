@@ -78,15 +78,12 @@ public:
         imgl = cv_bridge::toCvShare(leftimage, "rgb8")->image;
         imgr = cv_bridge::toCvShare(rightimage, "rgb8")->image;
         // imgmask = cv_bridge::toCvShare(maskimage, "mono8")->image;
-        // std::cout << "Channel imgl: " << imgl.channels() << std::endl;
-        // std::cout << "Channel imgr: " << imgr.channels() << std::endl;
-        // std::cout << "Channel mask: " << imgmask.channels() << std::endl;
       }
       catch(cv_bridge::Exception& e)
       {
         ROS_ERROR("cv_bridge exception: %s", e.what());
       }
-    //   std::cout << "test" << std::endl;
+
       //rectify
       cv::Mat left_img_rect, right_img_rect;
       const bool equal_hist = true; 
@@ -99,7 +96,6 @@ public:
     //   std::cout<< "Height: " << imgl.size().height << std::endl;
     //   cv::imwrite("/home/jiang/Desktop/bao/openvslam/rectify-result/l/"+std::to_string(temp)+".jpg", left_img_rect);
     //   cv::imwrite("/home/jiang/Desktop/bao/openvslam/rectify-result/r/"+std::to_string(temp)+".jpg", right_img_rect);
-    //   temp+=1;
 
       auto cam_pose_cw = (*SLAM).feed_stereo_frame(left_img_rect, right_img_rect, timestamp, imgmask);
     //   const auto campose = (*SLAM).feed_monocular_frame(imgl, timestamp, imgmask);
@@ -109,30 +105,8 @@ public:
       double x=trans_wc[0];
       double y=trans_wc[1];
       double z=trans_wc[2];
-    //   std::string line="location: "+std::to_string(x)+", "+std::to_string(y)+", "+std::to_string(z);
-      //std::cout<<line<<std::endl;
 
     //   const auto td::chrono::steady_clock::now();
-
-    //   const auto track_time = std::chrono::duration_cast<std::chrono::duration<double>>(tp_2 - tp_1).count();
-    //   (*track_times).push_back(track_time);
-
-    //   // coordinates transform
-    //   cv::Mat Twc0 = (cv::Mat_<double>(4,4)<<
-    //   0.01671606,  0.49534684, -0.86853444,  2.10729625,
-    //   -0.99984679,  0.00377027, -0.01709305,  0.72269651,
-    //   -0.00519237,  0.86868711,  0.49533397, -2.88459169,
-    //    0.        ,  0.        ,  0.        ,  1.        );
-    // //    -0.36517134,  0.62502629, -0.68992176,  4.46236342,
-    // //     0.90791577,  0.40291395, -0.11553921, -0.5849045 ,
-    // //     0.20576406, -0.66858245, -0.71460385,  2.83568201,
-    // //     0.        ,  0.        ,  0.        ,  1.        );
-    //   cv::Mat Pc_homo = (cv::Mat_<double>(4,1)<<x,y,z,1);
-    //   cv::Mat Pw_homo = Twc0.mul(Pc_homo);
-    //   std::cout<<std::to_string(Pw_homo.rows)<<","<<std::to_string(Pw_homo.cols)<<std::endl;
-    //   x = Pw_homo.at<double>(0,0);
-    //   y = Pw_homo.at<double>(1,0);
-    //   z = Pw_homo.at<doubp_2 = std::chrono::steady_clock::now();
 
     //   const auto track_time = std::chrono::duration_cast<std::chrono::duration<double>>(tp_2 - tp_1).count();
     //   (*track_times).push_back(track_time);
@@ -143,15 +117,6 @@ public:
       0.01651846,  0.52864174, -0.84868431,  1.99247474,
       -0.00601777, -0.84873218, -0.52878869,  2.97021366,
       0.        ,  0.        ,  0.        ,  1.        );//right hand
-    //   0.01671606,  0.49534684, -0.86853444,  2.10729625,
-    //   -0.99984679,  0.00377027, -0.01709305,  0.72269651,
-    //   -0.00519237,  0.86868711,  0.49533397, -2.88459169,
-    //    0.        ,  0.        ,  0.        ,  1.        );
-
-    //    -0.36517134,  0.62502629, -0.68992176,  4.46236342,
-    //     0.90791577,  0.40291395, -0.11553921, -0.5849045 ,
-    //     0.20576406, -0.66858245, -0.71460385,  2.83568201,
-    //     0.        ,  0.        ,  0.        ,  1.        );
       cv::Mat Pc_homo = (cv::Mat_<double>(4,1)<<x,y,z,1);
       cv::Mat Pw_homo = Twc0*Pc_homo;
       std::cout<<std::to_string(Pw_homo.rows)<<","<<std::to_string(Pw_homo.cols)<<std::endl;
